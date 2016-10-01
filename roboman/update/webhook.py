@@ -1,7 +1,8 @@
+from tornkts import utils
 from tornkts.base.server_response import ServerError
+from tornkts.handlers import BaseHandler
 
 __author__ = 'grigory51'
-from tornkts.handlers import BaseHandler
 
 
 class WebHookHandler(BaseHandler):
@@ -11,7 +12,8 @@ class WebHookHandler(BaseHandler):
         for bot in bots:
             if bot.access_key == id:
                 ok = True
-                bot._on_hook(self.request.body)
+                data = utils.json_loads(self.request.body)
+                bot._on_hook(**data)
                 break
         if ok:
             self.send_success_response()
