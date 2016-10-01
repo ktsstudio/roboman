@@ -1,4 +1,4 @@
 requests==2.7.0
-tornado==4.2.1
+tornado
 py-expression-eval==0.3
-git+ssh://git@gitlab.ktsstudio.ru/ktsstudio/tornkts.git@v0.2.7#egg=tornkts
+tornkts==0.9.0
