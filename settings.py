@@ -11,7 +11,7 @@ def parse_config(path):
     try:
         options.parse_config_file(path=path, final=False)
     except IOError:
-        print '[WARNING] File no readable, run with default settings'
+        print('[WARNING] File no readable, run with default settings')
 
 
 define('host', type=str, group='Server', default='127.0.0.1', help='Listen host')
