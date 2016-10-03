@@ -98,7 +98,9 @@ class BaseBot(object):
 
         return False
 
-    def send(self, **params):
+    def send(self, text='', **params):
+        if 'text' not in params:
+            params['text'] = text
         if 'chat_id' not in params:
             params['chat_id'] = self.chat_id
         if 'reply_markup' in params and isinstance(params['reply_markup'], Keyboard):
