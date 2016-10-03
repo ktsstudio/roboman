@@ -13,7 +13,8 @@ class WebHookHandler(BaseHandler):
             if bot.access_key == id:
                 ok = True
                 data = utils.json_loads(self.request.body)
-                bot._on_hook(**data)
+                bot = bot()
+                bot.on_hook(**data)
                 break
         if ok:
             self.send_success_response()

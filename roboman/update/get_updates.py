@@ -35,7 +35,7 @@ def get_updates(bot):
                 flag = True
                 if update_id[0] is None or item.get('update_id') + 1 > update_id[0]:
                     update_id[0] = item.get('update_id') + 1
-                    bot._on_hook(item)
+                    bot().on_hook(item)
             if flag:
                 logger.info('Processing updates for %s' % (bot.name,))
 

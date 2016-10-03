@@ -16,8 +16,11 @@ class Keyboard(object):
 
 
 class ReplyKeyboard(Keyboard):
-    def __init__(self, **kwargs):
-        self.keyboard = kwargs.get('keyboard', [])
+    def __init__(self, keyboard=None, **kwargs):
+        if keyboard is not None:
+            self.keyboard = keyboard
+        else:
+            self.keyboard = kwargs.get('keyboard', [[]])
         self.resize_keyboard = kwargs.get('resize_keyboard', True)
         self.one_time_keyboard = kwargs.get('one_time_keyboard', True)
         self.selective = kwargs.get('selective', False)

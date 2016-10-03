@@ -1,19 +1,21 @@
-import json
 import traceback
 import requests
 from tornado.httputil import url_concat
 from tornkts.handlers import BaseHandler
-from settings import options
 import random
 import string
 import logging
+from .keyboard import Keyboard
+
+try:
+    import ujson as json
+except:
+    import json as json
 
 __author__ = 'grigory51'
 
-logger = logging.getLogger('bot')
 
-
-class BaseBot(BaseHandler):
+class BaseBot(object):
     MODE_HOOK = 'hook'
     MODE_GET_UPDATES = 'get_updates'
 
@@ -23,15 +25,24 @@ class BaseBot(BaseHandler):
 
     connection = requests.Session()
 
-    def __init__(self, application, request, **kwargs):
-        super(BaseBot, self).__init__(application, request, **kwargs)
+    def __init__(self):
+        super().__init__()
+        self.text = ''
+        self.chat_id = None
+        self.logger = logging.getLogger(self.name)
 
-    @classmethod
-    def before_hook(cls, data):
+    def _before_hook(self, payload):
         pass
 
-    @classmethod
-    def _on_hook(cls, data):
+    def _on_hook(self, payload):
+        raise NotImplemented
+
+    def before_hook(self, data):
+        self.text = data.get('text', '')
+        self.chat_id = data.get('chat_id', None)
+        self._before_hook(data)
+
+    def on_hook(self, data):
         message = data.get('message')
         if not isinstance(message, dict):
             message = data.get('callback_query', {}).get('message')
@@ -63,51 +74,67 @@ class BaseBot(BaseHandler):
             }
 
             try:
-                updated_payload = cls.before_hook(payload)
+                updated_payload = self.before_hook(payload)
                 if updated_payload:
                     payload = updated_payload
-                cls.on_hook(payload)
+                self._on_hook(payload)
             except:
                 traceback.print_exc()
 
-    @classmethod
-    def match_command(cls, command, text):
-        if text is None or command is None:
+    def match_command(self, command=None, text=None):
+        if command is None:
             return False
+
+        if text is None:
+            text = self.text
 
         text = text.strip()
         if text.startswith(command):
-            text = text[len(command):]
-            text = text.strip()
+            text = text[len(command):].strip()
             return {
                 'result': True,
                 'args': [i for i in text.split(' ')]
             }
+
         return False
 
-    @classmethod
-    def send(cls, **params):
-        res = cls.connection.post(cls.get_method_url('sendMessage'), params=params)
+    def send(self, **params):
+        if 'chat_id' not in params:
+            params['chat_id'] = self.chat_id
+        if 'reply_markup' in params and isinstance(params['reply_markup'], Keyboard):
+            params['reply_markup'] = params['reply_markup'].to_json()
+
+        res = self.connection.post(self.get_method_url('sendMessage'), params=params)
         if res.status_code != 200:
-            logger.error(res.text)
+            self.logger.error(res.text)
+
+    def answer_callback_query(self, **params):
+        if 'chat_id' not in params:
+            params['chat_id'] = self.chat_id
+
+        res = self.connection.post(self.get_method_url('answerCallbackQuery'), params=params)
+        if res.status_code != 200:
+            self.logger.error(res.text)
+
+    def send_photo(self, files, **params):
+        if 'chat_id' not in params:
+            params['chat_id'] = self.chat_id
+
+        res = self.connection.post(self.get_method_url('sendPhoto'), files=files, params=params)
+        if res.status_code != 200:
+            self.logger.error(res.text)
+
+    def send_location(self, **params):
+        if 'chat_id' not in params:
+            params['chat_id'] = self.chat_id
+
+        res = self.connection.post(self.get_method_url('sendLocation'), params=params)
+        if res.status_code != 200:
+            self.logger.error(res.text)
 
     @classmethod
-    def answer_callback_query(cls, **params):
-        res = cls.connection.post(cls.get_method_url('answerCallbackQuery'), params=params)
-        if res.status_code != 200:
-            logger.error(res.text)
-
-    @classmethod
-    def send_photo(cls, files, **params):
-        res = cls.connection.post(cls.get_method_url('sendPhoto'), files=files, params=params)
-        if res.status_code != 200:
-            logger.error(res.text)
-
-    @classmethod
-    def send_location(cls, **params):
-        res = cls.connection.post(cls.get_method_url('sendLocation'), params=params)
-        if res.status_code != 200:
-            logger.error(res.text)
+    def get_file_url(cls, path, params=None):
+        return 'https://api.telegram.org/file/bot' + cls.key + '/' + path
 
     @classmethod
     def get_method_url(cls, method, params=None):
@@ -115,10 +142,6 @@ class BaseBot(BaseHandler):
         if params is not None:
             url = url_concat(url, params)
         return url
-
-    @classmethod
-    def get_file_url(cls, path, params=None):
-        return 'https://api.telegram.org/file/bot' + cls.key + '/' + path
 
     @classmethod
     def get_webhook_url(cls):
