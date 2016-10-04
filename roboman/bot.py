@@ -81,20 +81,25 @@ class BaseBot(object):
             except:
                 traceback.print_exc()
 
-    def match_command(self, command=None, text=None):
-        if command is None:
+    def match_command(self, commands=None, text=None):
+        if commands is None:
             return False
 
         if text is None:
             text = self.text
 
-        text = text.strip()
-        if text.startswith(command):
-            text = text[len(command):].strip()
-            return {
-                'result': True,
-                'args': [i for i in text.split(' ')]
-            }
+        if not isinstance(commands, list):
+            commands = [commands]
+
+        for command in commands:
+            text = text.strip()
+            if text.startswith(command):
+                text = text[len(command):].strip()
+                return {
+                    'command': command,
+                    'result': True,
+                    'args': [i for i in text.split(' ')]
+                }
 
         return False
 
