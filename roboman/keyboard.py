@@ -53,8 +53,8 @@ class InlineKeyboard(Keyboard):
 
 
 class ReplyKeyboardHide(ReplyKeyboard):
-    def __init__(self, **kwargs):
-        super(ReplyKeyboardHide, self).__init__(**kwargs)
+    def __init__(self, keyboard=None, **kwargs):
+        super().__init__(keyboard, **kwargs)
         self.hide_keyboard = kwargs.get('hide_keyboard', True)
         self.selective = kwargs.get('selective', False)
 
