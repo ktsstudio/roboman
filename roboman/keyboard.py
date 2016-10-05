@@ -20,7 +20,10 @@ class ReplyKeyboard(Keyboard):
         if keyboard is not None:
             self.keyboard = keyboard
         else:
-            self.keyboard = kwargs.get('keyboard', [[]])
+            self.keyboard = kwargs.get('keyboard', None)
+
+        if self.keyboard is None:
+            self.keyboard = [[]]
         self.resize_keyboard = kwargs.get('resize_keyboard', True)
         self.one_time_keyboard = kwargs.get('one_time_keyboard', True)
         self.selective = kwargs.get('selective', False)
@@ -30,6 +33,19 @@ class ReplyKeyboard(Keyboard):
             'keyboard': self.keyboard,
             'resize_keyboard': self.resize_keyboard,
             'one_time_keyboard': self.one_time_keyboard,
+            'selective': self.selective
+        }
+
+
+class ReplyKeyboardHide(ReplyKeyboard):
+    def __init__(self, keyboard=None, **kwargs):
+        super().__init__(keyboard, **kwargs)
+        self.hide_keyboard = kwargs.get('hide_keyboard', True)
+        self.selective = kwargs.get('selective', False)
+
+    def to_dict(self):
+        return {
+            'hide_keyboard': self.hide_keyboard,
             'selective': self.selective
         }
 
@@ -50,21 +66,6 @@ class InlineKeyboard(Keyboard):
         return {
             'inline_keyboard': keyboard
         }
-
-
-class ReplyKeyboardHide(ReplyKeyboard):
-    def __init__(self, keyboard=None, **kwargs):
-        super().__init__(keyboard, **kwargs)
-        self.hide_keyboard = kwargs.get('hide_keyboard', True)
-        self.selective = kwargs.get('selective', False)
-
-    def to_dict(self):
-        data = super(ReplyKeyboardHide, self).to_dict()
-        data.update({
-            'hide_keyboard': self.hide_keyboard,
-            'selective': self.selective
-        })
-        return data
 
 
 class KeyboardButton(Keyboard):
