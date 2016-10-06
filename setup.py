@@ -2,8 +2,8 @@ from os import path
 from setuptools import setup, find_packages
 
 here = path.abspath(path.dirname(__file__))
-version = '0.2.0'
-modules = ['tornado', 'requests', 'tornkts']
+version = '0.3.0'
+modules = ['tornado', 'requests', 'tornkts', 'pycurl']
 setup(
     name='roboman',
     version=version,

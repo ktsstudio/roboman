@@ -1,7 +1,11 @@
 import traceback
+from urllib.parse import urlencode
 import requests
+from tornado import gen
+from tornado.curl_httpclient import CurlAsyncHTTPClient
+from tornado.httpclient import HTTPRequest, HTTPError
 from tornado.httputil import url_concat
-from tornkts.handlers import BaseHandler
+from tornkts import utils
 import random
 import string
 import logging
@@ -24,6 +28,7 @@ class BaseBot(object):
     access_key = None
 
     connection = requests.Session()
+    client = CurlAsyncHTTPClient()
 
     def __init__(self):
         super().__init__()
@@ -103,6 +108,7 @@ class BaseBot(object):
 
         return False
 
+    @gen.coroutine
     def send(self, text='', **params):
         if 'text' not in params:
             params['text'] = text
@@ -111,33 +117,66 @@ class BaseBot(object):
         if 'reply_markup' in params and isinstance(params['reply_markup'], Keyboard):
             params['reply_markup'] = params['reply_markup'].to_json()
 
-        res = self.connection.post(self.get_method_url('sendMessage'), params=params)
-        if res.status_code != 200:
-            self.logger.error(res.text)
+        req = HTTPRequest(
+            self.get_method_url('sendMessage'),
+            method="POST",
+            body=urlencode(params)
+        )
 
+        res = yield self.client.fetch(req)
+        if res.code != 200:
+            self.logger.error(res.body)
+
+    @gen.coroutine
     def answer_callback_query(self, **params):
         if 'chat_id' not in params:
             params['chat_id'] = self.chat_id
 
-        res = self.connection.post(self.get_method_url('answerCallbackQuery'), params=params)
-        if res.status_code != 200:
-            self.logger.error(res.text)
+        req = HTTPRequest(
+            self.get_method_url('answerCallbackQuery'),
+            method="POST",
+            body=urlencode(params)
+        )
 
+        res = yield self.client.fetch(req)
+        if res.code != 200:
+            self.logger.error(res.body)
+
+    @gen.coroutine
     def send_photo(self, files, **params):
         if 'chat_id' not in params:
             params['chat_id'] = self.chat_id
+        if 'reply_markup' in params and isinstance(params['reply_markup'], Keyboard):
+            params['reply_markup'] = params['reply_markup'].to_json()
 
-        res = self.connection.post(self.get_method_url('sendPhoto'), files=files, params=params)
-        if res.status_code != 200:
-            self.logger.error(res.text)
+        #        res = self.connection.post(self.get_method_url('sendPhoto'), files=files, params=params)
 
+        content_type, body = utils.encode_multipart_formdata(params, files)
+        req = HTTPRequest(
+            self.get_method_url('sendPhoto'),
+            method="POST",
+            headers={'Content-Type': content_type},
+            body=body
+        )
+        try:
+            yield self.client.fetch(req)
+        except HTTPError as e:
+            self.logger.error(e.response.body)
+
+    @gen.coroutine
     def send_location(self, **params):
         if 'chat_id' not in params:
             params['chat_id'] = self.chat_id
 
-        res = self.connection.post(self.get_method_url('sendLocation'), params=params)
-        if res.status_code != 200:
-            self.logger.error(res.text)
+        req = HTTPRequest(
+            self.get_method_url('sendLocation'),
+            method="POST",
+            body=urlencode(params)
+        )
+
+        res = yield self.client.fetch(req)
+        if res.code != 200:
+            self.logger.error(res.body)
 
     @classmethod
     def get_file_url(cls, path, params=None):
@@ -152,5 +191,5 @@ class BaseBot(object):
 
     @classmethod
     def get_webhook_url(cls):
-        cls.access_key = ''.join([random.choice(string.ascii_letters + string.digits) for _ in xrange(30)])
+        cls.access_key = ''.join([random.choice(string.ascii_letters + string.digits) for _ in range(30)])
         return options.server_schema + '://' + options.server_name + '/telegram.' + cls.access_key
