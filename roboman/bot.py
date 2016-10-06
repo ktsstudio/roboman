@@ -91,7 +91,7 @@ class BaseBot(object):
             return False
 
         if text is None:
-            text = self.text
+            text = self.text if self.text is not None else ''
 
         if not isinstance(commands, list):
             commands = [commands]
@@ -149,7 +149,7 @@ class BaseBot(object):
         if 'reply_markup' in params and isinstance(params['reply_markup'], Keyboard):
             params['reply_markup'] = params['reply_markup'].to_json()
 
-        #        res = self.connection.post(self.get_method_url('sendPhoto'), files=files, params=params)
+        # res = self.connection.post(self.get_method_url('sendPhoto'), files=files, params=params)
 
         content_type, body = utils.encode_multipart_formdata(params, files)
         req = HTTPRequest(
