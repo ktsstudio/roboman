@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 here = path.abspath(path.dirname(__file__))
 version = '0.3.0'
-modules = ['tornado', 'requests', 'tornkts', 'pycurl']
+modules = ['tornado', 'tornkts', 'pycurl']
 setup(
     name='roboman',
     version=version,
