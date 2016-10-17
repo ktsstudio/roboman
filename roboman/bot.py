@@ -109,6 +109,12 @@ class BaseBot(object):
         return False
 
     @gen.coroutine
+    def _send(self, req):
+        try:
+            yield self.client.fetch(req)
+        except HTTPError as e:
+            self.logger.error(e.response.body if e.response else e)
+
     def send(self, text='', **params):
         if 'text' not in params:
             params['text'] = text
@@ -117,66 +123,53 @@ class BaseBot(object):
         if 'reply_markup' in params and isinstance(params['reply_markup'], Keyboard):
             params['reply_markup'] = params['reply_markup'].to_json()
 
-        req = HTTPRequest(
+        request = HTTPRequest(
             self.get_method_url('sendMessage'),
             method="POST",
             body=urlencode(params)
         )
 
-        res = yield self.client.fetch(req)
-        if res.code != 200:
-            self.logger.error(res.body)
+        self._send(request)
 
-    @gen.coroutine
     def answer_callback_query(self, **params):
         if 'chat_id' not in params:
             params['chat_id'] = self.chat_id
 
-        req = HTTPRequest(
+        request = HTTPRequest(
             self.get_method_url('answerCallbackQuery'),
             method="POST",
             body=urlencode(params)
         )
 
-        res = yield self.client.fetch(req)
-        if res.code != 200:
-            self.logger.error(res.body)
+        self._send(request)
 
-    @gen.coroutine
     def send_photo(self, files, **params):
         if 'chat_id' not in params:
             params['chat_id'] = self.chat_id
         if 'reply_markup' in params and isinstance(params['reply_markup'], Keyboard):
             params['reply_markup'] = params['reply_markup'].to_json()
 
-        # res = self.connection.post(self.get_method_url('sendPhoto'), files=files, params=params)
-
         content_type, body = utils.encode_multipart_formdata(params, files)
-        req = HTTPRequest(
+        request = HTTPRequest(
             self.get_method_url('sendPhoto'),
             method="POST",
             headers={'Content-Type': content_type},
             body=body
         )
-        try:
-            yield self.client.fetch(req)
-        except HTTPError as e:
-            self.logger.error(e.response.body)
 
-    @gen.coroutine
+        self._send(request)
+
     def send_location(self, **params):
         if 'chat_id' not in params:
             params['chat_id'] = self.chat_id
 
-        req = HTTPRequest(
+        request = HTTPRequest(
             self.get_method_url('sendLocation'),
             method="POST",
             body=urlencode(params)
         )
 
-        res = yield self.client.fetch(req)
-        if res.code != 200:
-            self.logger.error(res.body)
+        self._send(request)
 
     @classmethod
     def get_file_url(cls, path, params=None):
