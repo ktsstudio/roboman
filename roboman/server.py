@@ -1,5 +1,4 @@
-from tornado.httpclient import HTTPClient, HTTPRequest
-from urllib.parse import urlencode
+import requests
 from roboman.bot import BaseBot
 from roboman.update.get_updates import get_updates
 from roboman.update.webhook import WebHookHandler
@@ -49,19 +48,11 @@ class RobomanServer(Application):
         mode = self.settings.get('mode', BaseBot.MODE_HOOK)
         update_interval = self.settings.get('update_interval', 1000)
 
-        sync_client = HTTPClient()
-        io_loop = IOLoop.instance()
-
         for bot in bots:
             if mode == BaseBot.MODE_HOOK:
-                req = HTTPRequest(
-                    bot.get_method_url('setWebhook'),
-                    method='POST',
-                    body=urlencode({'url': bot.get_webhook_url()})
-                )
-                sync_client.fetch(req)
+                requests.post(bot.get_method_url('setWebhook'), {'url': bot.get_webhook_url()})
             elif mode == BaseBot.MODE_GET_UPDATES:
-                io_loop.add_callback(get_updates(bot))
+                PeriodicCallback(get_updates(bot), update_interval).start()
             else:
                 raise ServerError(ServerError.INTERNAL_SERVER_ERROR, description='Bad server mode')
 
@@ -70,4 +61,4 @@ class RobomanServer(Application):
 
         self.listen(port, host)
         if loop_start:
-            io_loop.start()
+            IOLoop.instance().start()
