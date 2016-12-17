@@ -1,4 +1,4 @@
-import traceback
+from asyncio import iscoroutinefunction, iscoroutine
 from urllib.parse import urlencode
 import requests
 from tornado import gen
@@ -9,6 +9,8 @@ from tornkts import utils
 import random
 import string
 import logging
+
+from roboman.storages import StoreSet
 from .keyboard import Keyboard
 
 try:
@@ -23,31 +25,59 @@ class BaseBot(object):
     MODE_HOOK = 'hook'
     MODE_GET_UPDATES = 'get_updates'
 
-    name = None
-    key = None
+    bot_name = None
+    bot_key = None
     access_key = None
+    _raw_data = None
 
     connection = requests.Session()
     client = CurlAsyncHTTPClient()
 
-    def __init__(self):
+    def __init__(self, parent_bot=None):
         super().__init__()
-        self.text = ''
-        self.chat_id = None
-        self.logger = logging.getLogger(self.name)
+        sub_bot = isinstance(parent_bot, BaseBot)
+
+        self.text = parent_bot.text if sub_bot else ''
+        self.chat_id = parent_bot.chat_id if sub_bot else None
+        self.logger = logging.getLogger(self.bot_name)
+
+        self.store = StoreSet(self.define_stores())
+
+        if sub_bot:
+            self.__class__.bot_key = parent_bot.bot_key
+
+    async def run_bot(self, cls, extra_data=None):
+        bot = cls(parent_bot=self)
+
+        data = self._raw_data
+        if data is None:
+            data = {}
+
+        if 'extra' not in data:
+            data['extra'] = {}
+
+        data['extra'].update(extra_data if extra_data is not None else {})
+        data['extra']['parent'] = self
+
+        await bot.on_hook(data)
+
+    def define_stores(self):
+        return {}
 
     def _before_hook(self, payload):
-        pass
+        return payload
 
     def _on_hook(self, payload):
         raise NotImplemented
 
     def before_hook(self, data):
-        self.text = data.get('text', '')
+        self.text = str(data.get('text', '')).strip()
         self.chat_id = data.get('chat_id', None)
-        self._before_hook(data)
+        return self._before_hook(data)
 
-    def on_hook(self, data):
+    async def on_hook(self, data):
+        self._raw_data = data
+
         message = data.get('message')
         if not isinstance(message, dict):
             message = data.get('callback_query', {}).get('message')
@@ -75,16 +105,25 @@ class BaseBot(object):
                 'photo': message.get('photo', None),
 
                 'callback_query': data.get('callback_query', {}).get('data', None),
-                'callback_query_id': data.get('callback_query', {}).get('id', None)
+                'callback_query_id': data.get('callback_query', {}).get('id', None),
+                'extra': data.get('extra', {})
             }
 
             try:
                 updated_payload = self.before_hook(payload)
                 if updated_payload:
                     payload = updated_payload
-                self._on_hook(payload)
-            except:
-                traceback.print_exc()
+
+                if iscoroutinefunction(self._on_hook):
+                    await self._on_hook(payload)
+                else:
+                    self._on_hook(payload)
+
+            except Exception as e:
+                if isinstance(e, HTTPError) and e.code == 599:
+                    self.logger.warning('HTTPError: timeout %s' % self.bot_name)
+                else:
+                    self.logger.exception(e)
 
     def match_command(self, commands=None, text=None):
         if commands is None:
@@ -98,7 +137,7 @@ class BaseBot(object):
 
         for command in commands:
             text = text.strip()
-            if text.startswith(command):
+            if text.startswith(command) or text.startswith('/' + command):
                 text = text[len(command):].strip()
                 return {
                     'command': command,
@@ -109,12 +148,6 @@ class BaseBot(object):
         return False
 
     @gen.coroutine
-    def _send(self, req):
-        try:
-            yield self.client.fetch(req)
-        except HTTPError as e:
-            self.logger.error(e.response.body if e.response else e)
-
     def send(self, text='', **params):
         if 'text' not in params:
             params['text'] = text
@@ -123,26 +156,34 @@ class BaseBot(object):
         if 'reply_markup' in params and isinstance(params['reply_markup'], Keyboard):
             params['reply_markup'] = params['reply_markup'].to_json()
 
-        request = HTTPRequest(
+        req = HTTPRequest(
             self.get_method_url('sendMessage'),
             method="POST",
             body=urlencode(params)
         )
 
-        self._send(request)
+        try:
+            yield self.client.fetch(req)
+        except HTTPError as e:
+            self.logger.error(e.response.body)
 
+    @gen.coroutine
     def answer_callback_query(self, **params):
         if 'chat_id' not in params:
             params['chat_id'] = self.chat_id
 
-        request = HTTPRequest(
+        req = HTTPRequest(
             self.get_method_url('answerCallbackQuery'),
             method="POST",
             body=urlencode(params)
         )
 
-        self._send(request)
+        try:
+            yield self.client.fetch(req)
+        except HTTPError as e:
+            self.logger.error(e.response.body)
 
+    @gen.coroutine
     def send_photo(self, files, **params):
         if 'chat_id' not in params:
             params['chat_id'] = self.chat_id
@@ -150,34 +191,39 @@ class BaseBot(object):
             params['reply_markup'] = params['reply_markup'].to_json()
 
         content_type, body = utils.encode_multipart_formdata(params, files)
-        request = HTTPRequest(
+        req = HTTPRequest(
             self.get_method_url('sendPhoto'),
             method="POST",
             headers={'Content-Type': content_type},
             body=body
         )
 
-        self._send(request)
+        try:
+            yield self.client.fetch(req)
+        except HTTPError as e:
+            self.logger.error(e.response.body)
 
+    @gen.coroutine
     def send_location(self, **params):
         if 'chat_id' not in params:
             params['chat_id'] = self.chat_id
 
-        request = HTTPRequest(
+        req = HTTPRequest(
             self.get_method_url('sendLocation'),
             method="POST",
             body=urlencode(params)
         )
 
-        self._send(request)
+        res = yield self.client.fetch(req)
+        if res.code != 200:
+            self.logger.error(res.body)
 
-    @classmethod
-    def get_file_url(cls, path, params=None):
-        return 'https://api.telegram.org/file/bot' + cls.key + '/' + path
+    def get_file_url(self, path):
+        return 'https://api.telegram.org/file/bot' + self.bot_key + '/' + path
 
     @classmethod
     def get_method_url(cls, method, params=None):
-        url = 'https://api.telegram.org/bot' + cls.key + '/' + method
+        url = 'https://api.telegram.org/bot' + cls.bot_key + '/' + method
         if params is not None:
             url = url_concat(url, params)
         return url
