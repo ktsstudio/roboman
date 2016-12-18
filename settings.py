@@ -1,8 +1,8 @@
 # coding=utf-8
-__author__ = 'grigory51'
-
 from tornado.options import define, options
 import os
+
+__author__ = 'grigory51'
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
