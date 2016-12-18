@@ -182,6 +182,10 @@ class BaseBot(object):
 
         for command in commands:
             text = text.strip()
+
+            if not command:
+                continue
+
             if text.startswith(command) or text.startswith('/' + command):
                 text = text[len(command):].strip()
                 return {
