@@ -3,7 +3,6 @@ from roboman.storages import BaseStorage
 from mongoengine import connection
 
 
-
 class MongoKV(BaseStorage):
     collection_name = '__mongo_kv_storage'
 

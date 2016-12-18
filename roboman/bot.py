@@ -1,4 +1,4 @@
-from asyncio import iscoroutinefunction, iscoroutine
+from asyncio import iscoroutinefunction
 from urllib.parse import urlencode
 import requests
 import ujson

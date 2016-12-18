@@ -22,7 +22,6 @@ class KTSBot(BaseBot):
             if text.startswith('@KTSBot'):
                 text = text[len('@KTSBot'):]
                 text = text.strip()
-            print text
 
             response = ''
             if text.startswith('/serega'):
@@ -31,7 +30,7 @@ class KTSBot(BaseBot):
             elif text.startswith('/max'):
                 var = random.choice(
                     [u'за косарь', u'это еще месяц', u'это за 20 тысяч можно', u' за два вечера бахнем'])
-                response = u'Ну %s.' % (var)
+                response = u'Ну %s.' % var
             elif text.startswith('/calc'):
                 parser = Parser()
                 text = text[len('/calc'):]
@@ -42,7 +41,9 @@ class KTSBot(BaseBot):
             else:
                 response = u'Извините, не знаю'
 
-            r = requests.post(cls.get_method_url('sendMessage'), {'chat_id': chat_id, 'text': response})
+            requests.post(cls.get_method_url('sendMessage'), {'chat_id': chat_id, 'text': response})
         else:
-            r = requests.post(cls.get_method_url('sendMessage'),
-                              {'chat_id': chat_id, 'text': u'Извините, это закрытый бот'})
+            requests.post(cls.get_method_url('sendMessage'),{
+                'chat_id': chat_id,
+                'text': u'Извините, это закрытый бот'
+            })

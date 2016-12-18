@@ -6,11 +6,11 @@ __author__ = 'grigory51'
 
 
 class WebHookHandler(BaseHandler):
-    def post(self, id):
+    def post(self, access_key):
         bots = self.settings.get('bots', [])
         ok = False
         for bot in bots:
-            if bot.access_key == id:
+            if bot.access_key == access_key:
                 ok = True
                 data = utils.json_loads(self.request.body)
                 bot = bot()
