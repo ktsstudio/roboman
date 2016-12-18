@@ -1,10 +1,6 @@
 from hashlib import md5
 from datetime import datetime
-
 from tornkts import utils
-
-from roboman.inline.input_message_content import InputMessageContent
-from roboman.keyboard import Keyboard
 
 
 class InlineQueryResult(object):

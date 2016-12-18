@@ -1,7 +1,6 @@
 import requests
 import logging
 from tornado.httpclient import HTTPRequest, AsyncHTTPClient, HTTPError
-from tornado import gen
 
 try:
     import ujson as json
