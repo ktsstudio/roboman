@@ -24,7 +24,7 @@ def get_updates(bot):
         if update_id[0] is not None:
             data['offset'] = update_id[0]
 
-        req = HTTPRequest(bot.get_method_url('getUpdates', data), connect_timeout=2, request_timeout=2, )
+        req = HTTPRequest(bot.get_method_url('getUpdates', data), connect_timeout=5, request_timeout=5, )
         try:
             res = await client.fetch(req)
         except Exception as e:
