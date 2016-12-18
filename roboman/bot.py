@@ -11,6 +11,7 @@ import random
 import string
 import logging
 
+from roboman.inline.result import InlineQueryResult
 from roboman.storages import StoreSet
 from .keyboard import Keyboard
 
@@ -34,13 +35,14 @@ class BaseBot(object):
     connection = requests.Session()
     client = CurlAsyncHTTPClient()
 
-    def __init__(self, parent_bot=None, chat_id=None, text=''):
+    def __init__(self, parent_bot=None, chat_id=None, inline_query_id=None, text=''):
         super().__init__()
         sub_bot = isinstance(parent_bot, BaseBot) if parent_bot is not None else False
 
         self.parent_bot = parent_bot if sub_bot else None
         self.text = text
         self.chat_id = chat_id
+        self.inline_query_id = inline_query_id
         self.logger = logging.getLogger(self.bot_name)
 
         self.store = StoreSet(self.define_stores())
@@ -71,67 +73,102 @@ class BaseBot(object):
     def _on_hook(self, payload):
         raise NotImplemented
 
+    def _on_inline_hook(self, payload):
+        raise NotImplemented
+
     async def refresh(self):
         await self.on_hook(self._raw_data)
 
     def before_hook(self, data):
         self.text = str(data.get('text', '')).strip()
         self.chat_id = data.get('chat_id', None)
+
+        if data.get('inline_query'):
+            self.text = data['query']
+            self.inline_query_id = data['query_id']
+
         return self._before_hook(data)
 
     async def on_hook(self, data):
         self._raw_data = data
 
-        message = data.get('message')
-        if not isinstance(message, dict):
-            message = data.get('callback_query', {}).get('message')
-            if isinstance(message, dict):
-                user = data.get('callback_query', {}).get('from')
-            else:
-                message = {}
-                user = {}
-        else:
-            user = message.get('from', {})
+        if 'inline_query' in data:
+            data = data.get('inline_query')
+            user = data.get('from', {})
 
-        if isinstance(message, dict):
             payload = {
-                'message_id': message.get('message_id'),
-                'text': message.get('text'),
-                'date': message.get('date'),
+                'inline_query': True,
 
-                'chat_id': message.get('chat', {}).get('id', None),
-                'chat_title': message.get('chat', {}).get('title', None),
+                'query': data.get('query'),
+                'query_id': data.get('id'),
 
                 'from_id': user.get('id', None),
                 'from_username': user.get('username', None),
                 'from_first_name': user.get('first_name', None),
                 'from_last_name': user.get('last_name', None),
-
-                'location': message.get('location', None),
-                'photo': message.get('photo', None),
-
-                'callback_query': data.get('callback_query', {}).get('data', None),
-                'callback_query_id': data.get('callback_query', {}).get('id', None),
-                'extra': data.get('extra', {}),
-
-                'contact': message.get('contact')
             }
 
             try:
                 updated_payload = self.before_hook(payload)
-                if updated_payload:
-                    payload = updated_payload
-
-                if iscoroutinefunction(self._on_hook):
-                    await self._on_hook(payload)
+                if iscoroutinefunction(self._on_inline_hook):
+                    await self._on_inline_hook(updated_payload)
                 else:
-                    self._on_hook(payload)
-
+                    self._on_inline_hook(updated_payload)
             except Exception as e:
                 if isinstance(e, HTTPError) and e.code == 599:
-                    self.logger.warning('HTTPError: timeout %s' % self.bot_name)
+                    self.logger.warning('HTTPError: timeout _on_inline_hook of %s' % self.bot_name)
                 else:
                     self.logger.exception(e)
+        else:
+            message = data.get('message')
+            if not isinstance(message, dict):
+                message = data.get('callback_query', {}).get('message')
+                if isinstance(message, dict):
+                    user = data.get('callback_query', {}).get('from')
+                else:
+                    message = {}
+                    user = {}
+            else:
+                user = message.get('from', {})
+
+            if isinstance(message, dict):
+                payload = {
+                    'message_id': message.get('message_id'),
+                    'text': message.get('text'),
+                    'date': message.get('date'),
+
+                    'chat_id': message.get('chat', {}).get('id', None),
+                    'chat_title': message.get('chat', {}).get('title', None),
+
+                    'from_id': user.get('id', None),
+                    'from_username': user.get('username', None),
+                    'from_first_name': user.get('first_name', None),
+                    'from_last_name': user.get('last_name', None),
+
+                    'location': message.get('location', None),
+                    'photo': message.get('photo', None),
+
+                    'callback_query': data.get('callback_query', {}).get('data', None),
+                    'callback_query_id': data.get('callback_query', {}).get('id', None),
+                    'extra': data.get('extra', {}),
+
+                    'contact': message.get('contact')
+                }
+
+                try:
+                    updated_payload = self.before_hook(payload)
+                    if updated_payload:
+                        payload = updated_payload
+
+                    if iscoroutinefunction(self._on_hook):
+                        await self._on_hook(payload)
+                    else:
+                        self._on_hook(payload)
+                except Exception as e:
+                    if isinstance(e, HTTPError) and e.code == 599:
+                        self.logger.warning('HTTPError: timeout on_hook of %s' % self.bot_name)
+                    else:
+                        self.logger.exception(e)
 
     def match_command(self, commands=None, text=None):
         if commands is None:
@@ -161,8 +198,6 @@ class BaseBot(object):
             params['text'] = text
         if 'chat_id' not in params:
             params['chat_id'] = self.chat_id
-        if 'reply_markup' in params and isinstance(params['reply_markup'], Keyboard):
-            params['reply_markup'] = params['reply_markup'].to_json()
 
         req = HTTPRequest(
             self.get_method_url('sendMessage'),
@@ -246,6 +281,36 @@ class BaseBot(object):
 
         req = HTTPRequest(
             self.get_method_url('editMessageText'),
+            method="POST",
+            body=urlencode(params)
+        )
+
+        try:
+            res = yield self.client.fetch(req)
+            data = ujson.loads(res.body)
+            return data.get('result', {})
+        except HTTPError as e:
+            self.logger.error(e.response.body)
+
+    @gen.coroutine
+    def answer_inline_query(self, text='', **params):
+        if 'inline_query_id' not in params:
+            params['inline_query_id'] = self.inline_query_id
+        if 'text' not in params:
+            params['text'] = text
+        if 'results' not in params:
+            params['results'] = []
+
+        if 'results' in params and isinstance(params['results'], list):
+            def is_result(x):
+                return isinstance(x, InlineQueryResult)
+
+            params['results'] = utils.json_dumps(
+                list(map(lambda x: x.to_dict() if is_result(x) else x, params['results']))
+            )
+
+        req = HTTPRequest(
+            self.get_method_url('answerInlineQuery'),
             method="POST",
             body=urlencode(params)
         )
