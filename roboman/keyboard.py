@@ -51,26 +51,36 @@ class ReplyKeyboardHide(ReplyKeyboard):
 
 
 class InlineKeyboard(Keyboard):
-    def __init__(self, **kwargs):
-        self.inline_keyboard = kwargs.get('keyboard', [])
+    def __init__(self, keyboard=None, **kwargs):
+        if keyboard is not None:
+            self.inline_keyboard = keyboard
+        else:
+            self.inline_keyboard = kwargs.get('keyboard', None)
+        if self.inline_keyboard is None:
+            self.inline_keyboard = [[]]
+
         self.resize_keyboard = kwargs.get('resize_keyboard', True)
         self.one_time_keyboard = kwargs.get('one_time_keyboard', True)
         self.selective = kwargs.get('selective', False)
 
     def to_dict(self):
-        keyboard = self.inline_keyboard
-        for i, row in enumerate(keyboard):
+        inline_keyboard = self.inline_keyboard
+        for i, row in enumerate(inline_keyboard):
             for j, button in enumerate(row):
-                keyboard[i][j] = button.to_dict()
+                inline_keyboard[i][j] = button.to_dict()
 
         return {
-            'inline_keyboard': keyboard
+            'inline_keyboard': inline_keyboard
         }
 
 
 class KeyboardButton(Keyboard):
-    def __init__(self, **kwargs):
-        self.text = kwargs.get('text', '')
+    def __init__(self, text='', **kwargs):
+        if text != '':
+            self.text = text
+        else:
+            self.text = kwargs.get('text', '')
+
         self.request_contact = kwargs.get('request_contact', False)
         self.request_location = kwargs.get('request_location', False)
 
@@ -83,11 +93,16 @@ class KeyboardButton(Keyboard):
 
 
 class InlineKeyboardButton(Keyboard):
-    def __init__(self, **kwargs):
-        self.text = kwargs.get('text', '')
+    def __init__(self, text=None, **kwargs):
+        if text is not None:
+            self.text = text
+        else:
+            self.text = kwargs.get('text', None)
+
         self.url = kwargs.get('url', False)
         self.callback_data = kwargs.get('callback_data', False)
         self.switch_inline_query = kwargs.get('switch_inline_query', False)
+        self.switch_inline_query_current_chat = kwargs.get('switch_inline_query_current_chat', False)
 
     def to_dict(self):
         result = {
@@ -96,9 +111,11 @@ class InlineKeyboardButton(Keyboard):
 
         if self.url:
             result['url'] = self.url
-        if self.switch_inline_query:
-            result['switch_inline_query'] = self.switch_inline_query
         if self.callback_data:
             result['callback_data'] = self.callback_data
+        if self.switch_inline_query:
+            result['switch_inline_query'] = self.switch_inline_query
+        if self.switch_inline_query_current_chat:
+            result['switch_inline_query_current_chat'] = self.switch_inline_query_current_chat
 
         return result
