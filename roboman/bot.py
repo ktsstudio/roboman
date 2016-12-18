@@ -1,6 +1,7 @@
 from asyncio import iscoroutinefunction, iscoroutine
 from urllib.parse import urlencode
 import requests
+import ujson
 from tornado import gen
 from tornado.curl_httpclient import CurlAsyncHTTPClient
 from tornado.httpclient import HTTPRequest, HTTPError
@@ -33,12 +34,13 @@ class BaseBot(object):
     connection = requests.Session()
     client = CurlAsyncHTTPClient()
 
-    def __init__(self, parent_bot=None):
+    def __init__(self, parent_bot=None, chat_id=None, text=''):
         super().__init__()
-        sub_bot = isinstance(parent_bot, BaseBot)
+        sub_bot = isinstance(parent_bot, BaseBot) if parent_bot is not None else False
 
-        self.text = parent_bot.text if sub_bot else ''
-        self.chat_id = parent_bot.chat_id if sub_bot else None
+        self.parent_bot = parent_bot if sub_bot else None
+        self.text = text
+        self.chat_id = chat_id
         self.logger = logging.getLogger(self.bot_name)
 
         self.store = StoreSet(self.define_stores())
@@ -47,7 +49,7 @@ class BaseBot(object):
             self.__class__.bot_key = parent_bot.bot_key
 
     async def run_bot(self, cls, extra_data=None):
-        bot = cls(parent_bot=self)
+        bot = cls(parent_bot=self, chat_id=self.chat_id, text=self.text)
 
         data = self._raw_data
         if data is None:
@@ -57,7 +59,6 @@ class BaseBot(object):
             data['extra'] = {}
 
         data['extra'].update(extra_data if extra_data is not None else {})
-        data['extra']['parent'] = self
 
         await bot.on_hook(data)
 
@@ -69,6 +70,9 @@ class BaseBot(object):
 
     def _on_hook(self, payload):
         raise NotImplemented
+
+    async def refresh(self):
+        await self.on_hook(self._raw_data)
 
     def before_hook(self, data):
         self.text = str(data.get('text', '')).strip()
@@ -84,12 +88,14 @@ class BaseBot(object):
             if isinstance(message, dict):
                 user = data.get('callback_query', {}).get('from')
             else:
+                message = {}
                 user = {}
         else:
             user = message.get('from', {})
 
         if isinstance(message, dict):
             payload = {
+                'message_id': message.get('message_id'),
                 'text': message.get('text'),
                 'date': message.get('date'),
 
@@ -106,7 +112,9 @@ class BaseBot(object):
 
                 'callback_query': data.get('callback_query', {}).get('data', None),
                 'callback_query_id': data.get('callback_query', {}).get('id', None),
-                'extra': data.get('extra', {})
+                'extra': data.get('extra', {}),
+
+                'contact': message.get('contact')
             }
 
             try:
@@ -163,7 +171,9 @@ class BaseBot(object):
         )
 
         try:
-            yield self.client.fetch(req)
+            res = yield self.client.fetch(req)
+            data = ujson.loads(res.body)
+            return data.get('result', {})
         except HTTPError as e:
             self.logger.error(e.response.body)
 
@@ -190,13 +200,18 @@ class BaseBot(object):
         if 'reply_markup' in params and isinstance(params['reply_markup'], Keyboard):
             params['reply_markup'] = params['reply_markup'].to_json()
 
-        content_type, body = utils.encode_multipart_formdata(params, files)
-        req = HTTPRequest(
-            self.get_method_url('sendPhoto'),
-            method="POST",
-            headers={'Content-Type': content_type},
-            body=body
-        )
+        kwargs = dict(method="POST")
+
+        if isinstance(files, str):
+            params['photo'] = files
+            kwargs['body'] = urlencode(params)
+        else:
+            content_type, body = utils.encode_multipart_formdata(params, files)
+
+            kwargs['headers'] = {'Content-Type': content_type},
+            kwargs['body'] = body
+
+        req = HTTPRequest(self.get_method_url('sendPhoto'), **kwargs)
 
         try:
             yield self.client.fetch(req)
@@ -217,6 +232,30 @@ class BaseBot(object):
         res = yield self.client.fetch(req)
         if res.code != 200:
             self.logger.error(res.body)
+
+    @gen.coroutine
+    def edit_message_text(self, message_id, text='', **params):
+        params['message_id'] = message_id
+
+        if 'text' not in params:
+            params['text'] = text
+        if 'chat_id' not in params:
+            params['chat_id'] = self.chat_id
+        if 'reply_markup' in params and isinstance(params['reply_markup'], Keyboard):
+            params['reply_markup'] = params['reply_markup'].to_json()
+
+        req = HTTPRequest(
+            self.get_method_url('editMessageText'),
+            method="POST",
+            body=urlencode(params)
+        )
+
+        try:
+            res = yield self.client.fetch(req)
+            data = ujson.loads(res.body)
+            return data.get('result', {})
+        except HTTPError as e:
+            self.logger.error(e.response.body)
 
     def get_file_url(self, path):
         return 'https://api.telegram.org/file/bot' + self.bot_key + '/' + path
