@@ -49,9 +49,8 @@ class MongoKV(BaseStorage):
             'ttl': ttl
         }
 
-        if key not in self._cache or value != self._cache[key]:
-            self.collection.update({'key': key}, data, upsert=True)
-            self._cache[key] = value
+        self.collection.update({'key': key}, data, upsert=True)
+        self._cache[key] = value
 
     def delete(self, key):
         self.collection.delete_many(dict(key=key))
