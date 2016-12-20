@@ -345,6 +345,21 @@ class BaseBot(object):
         except HTTPError as e:
             self.logger.error(e.response.body)
 
+    @gen.coroutine
+    def get_file(self, file_id):
+        req = HTTPRequest(
+            self.get_method_url('getFile'),
+            method="POST",
+            body=urlencode({'file_id': file_id})
+        )
+
+        try:
+            res = yield self.client.fetch(req)
+            data = ujson.loads(res.body)
+            return data.get('result', {})
+        except HTTPError as e:
+            self.logger.exception(e)
+
     def get_file_url(self, path):
         return 'https://api.telegram.org/file/bot' + self.bot_key + '/' + path
 
