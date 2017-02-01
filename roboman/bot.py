@@ -3,8 +3,7 @@ from urllib.parse import urlencode
 import requests
 import ujson
 from tornado import gen
-from tornado.curl_httpclient import CurlAsyncHTTPClient
-from tornado.httpclient import HTTPRequest, HTTPError
+from tornado.httpclient import HTTPRequest, HTTPError, AsyncHTTPClient
 from tornado.httputil import url_concat
 from tornkts import utils
 import random
@@ -33,7 +32,7 @@ class BaseBot(object):
     _raw_data = None
 
     connection = requests.Session()
-    client = CurlAsyncHTTPClient()
+    client = AsyncHTTPClient()
 
     def __init__(self, parent_bot=None, chat_id=None, inline_query_id=None, text=''):
         super().__init__()
