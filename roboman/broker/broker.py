@@ -1,8 +1,6 @@
-import logging
 from urllib.parse import urlencode
-
 from roboman.broker.handlers import WorkerHandler, HookHandler
-from roboman.broker.queue import buckets
+from roboman.broker.msg_queue import buckets
 from roboman.log import get_logger
 from tornado import gen
 from tornado.httpclient import HTTPClient, HTTPRequest
@@ -45,19 +43,22 @@ class Broker(Application):
         telegram = self.get_messenger_settings('telegram')
         http_client = HTTPClient()
 
-        try:
-            logger.info('Set telegram webhook: %s' % telegram['hook_url'])
+        if 'bots' in telegram:
+            for bucket, bot in telegram['bots'].items():
+                try:
+                    logger.info('Installing telegram webhook: %s' % bot['hook_url'])
 
-            request = HTTPRequest(
-                'https://api.telegram.org/bot{0}/setWebhook'.format(telegram['access_token']),
-                method="POST",
-                body=urlencode({'url': telegram['hook_url']})
-            )
+                    request = HTTPRequest(
+                        'https://api.telegram.org/bot{0}/setWebhook'.format(bot['access_token']),
+                        method="POST",
+                        body=urlencode({'url': bot['hook_url']})
+                    )
+                    http_client.fetch(request)
 
-            http_client.fetch(request)
-            result = True
-        except Exception as e:
-            logger.error('Fail set telegram webhook: {0}'.format(str(e)))
+                    logger.info('Telegram webhook %s successfully install' % bot['hook_url'])
+                    result = True
+                except Exception as e:
+                    logger.error('Fail set telegram webhook: {0}'.format(str(e)))
 
         http_client.close()
         return result
@@ -78,14 +79,13 @@ def stats():
                 locks=', '.join(list(map(str, list(queue.locks)))),
                 key=key
             ))
-            print(queue.worker_locks)
 
 
 if __name__ == '__main__':
     loop = IOLoop.instance()
 
     broker = Broker()
-    broker.listen(9000)
+    broker.listen(5555)
 
     loop.add_callback(stats)
     loop.start()

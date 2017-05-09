@@ -1,6 +1,4 @@
-from roboman.broker.queue import queue
 from roboman.broker.handlers.base import BucketHandler
-from roboman.message import Message
 from tornado import gen
 
 
@@ -24,21 +22,23 @@ class WorkerHandler(BucketHandler):
         }
 
     def done_message(self):
-        msg = Message(self.get_payload())
-        queue.remove(msg.id, msg.worker)
+        task_id = self.get_str_argument('id')
+        self.worker_id = self.get_str_argument('worker')
+
+        self.bucket.remove(task_id, self.worker_id)
         self.send_success_response({'status': 'ok'})
 
     @gen.coroutine
     def get_message(self):
         self.worker_id = self.get_str_argument('worker')
 
-        task = yield queue.next()
-        response = Message(task)
+        task = yield self.bucket.next(self.worker_id)
 
         if not self.client_disconnected:
-            self.send_success_response(data=response.to_dict())
+            self.send_success_response(data=task.to_dict())
             self.flush()
-            queue.make_work(response.id, self.worker_id)
+        else:
+            self.bucket.make_new(task.id, self.worker_id)
 
     def on_connection_close(self):
         super().on_connection_close()

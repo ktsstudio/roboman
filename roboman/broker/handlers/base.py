@@ -1,4 +1,4 @@
-from roboman.broker.queue import get_bucket
+from roboman.broker.msg_queue import get_bucket
 from tornkts import utils
 from tornkts.base.server_response import ServerError
 from tornkts.handlers import BaseHandler
@@ -13,6 +13,10 @@ class BucketHandler(BaseHandler):
     @property
     def bucket(self):
         return get_bucket(self._bucket)
+
+    @property
+    def bucket_name(self):
+        return self._bucket
 
     def set_bucket(self, bucket):
         self._bucket = bucket

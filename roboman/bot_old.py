@@ -1,28 +1,22 @@
 from asyncio import iscoroutinefunction
 from urllib.parse import urlencode
-import requests
-import ujson
 from tornado import gen
 from tornado.httpclient import HTTPRequest, HTTPError, AsyncHTTPClient
 from tornado.httputil import url_concat
+from roboman.telegram.inline.result import InlineQueryResult
+from roboman.storages import StoreSet
+from roboman.telegram.keyboard import Keyboard
 from tornkts import utils
 import random
 import string
 import logging
 
-from roboman.inline.result import InlineQueryResult
-from roboman.storages import StoreSet
-from .keyboard import Keyboard, InlineKeyboard
-
-try:
-    import ujson as json
-except:
-    import json as json
+from tornkts.utils import json_loads
 
 __author__ = 'grigory51'
 
 
-class BaseBot(object):
+class BaseBotOld(object):
     MODE_HOOK = 'hook'
     MODE_GET_UPDATES = 'get_updates'
 
@@ -31,12 +25,11 @@ class BaseBot(object):
     access_key = None
     _raw_data = None
 
-    connection = requests.Session()
     client = AsyncHTTPClient()
 
     def __init__(self, parent_bot=None, chat_id=None, inline_query_id=None, text=''):
         super().__init__()
-        sub_bot = isinstance(parent_bot, BaseBot) if parent_bot is not None else False
+        sub_bot = isinstance(parent_bot, BaseBotOld) if parent_bot is not None else False
 
         self.parent_bot = parent_bot if sub_bot else None
         self.text = text
@@ -229,7 +222,7 @@ class BaseBot(object):
 
         try:
             res = yield self.client.fetch(req)
-            data = ujson.loads(res.body)
+            data = json_loads(res.body)
             return data.get('result', {})
         except HTTPError as e:
             self.logger.exception(e)
@@ -309,7 +302,7 @@ class BaseBot(object):
 
         try:
             res = yield self.client.fetch(req)
-            data = ujson.loads(res.body)
+            data = json_loads(res.body)
             return data.get('result', {})
         except HTTPError as e:
             self.logger.error(e.response.body)
@@ -339,7 +332,7 @@ class BaseBot(object):
 
         try:
             res = yield self.client.fetch(req)
-            data = ujson.loads(res.body)
+            data = json_loads(res.body)
             return data.get('result', {})
         except HTTPError as e:
             self.logger.error(e.response.body)
@@ -354,7 +347,7 @@ class BaseBot(object):
 
         try:
             res = yield self.client.fetch(req)
-            data = ujson.loads(res.body)
+            data = json_loads(res.body)
             return data.get('result', {})
         except HTTPError as e:
             self.logger.exception(e)

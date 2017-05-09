@@ -1,6 +1,6 @@
-from roboman.bot import BaseBot
+from roboman.bot.bot import BaseBot
 
 
 class KTSBot(BaseBot):
-    async def on_hook(self, data):
+    async def hook(self):
         await self.send('Hello!')
