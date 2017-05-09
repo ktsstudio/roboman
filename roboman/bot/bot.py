@@ -21,13 +21,25 @@ logger = logging.getLogger('bot')
 class BaseBot(object):
     def __init__(self, msg, **kwargs):
         self.msg = msg
+        self.store = kwargs.get('store')
 
     @property
     def text(self):
         return self.msg.text
 
+    async def before_hook(self):
+        pass
+
     async def hook(self):
         raise NotImplemented
+
+    async def after_hook(self):
+        pass
+
+    async def run(self):
+        await self.before_hook()
+        await self.hook()
+        await self.after_hook()
 
     async def send(self, text):
         req = request.send(self.msg, text)

@@ -1,6 +1,7 @@
 from roboman.bot.bot import BaseBot
 from roboman.bot.message import Message
 from roboman.log import get_logger
+from roboman.storages import StoreSet
 from tornkts import utils
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError
 from urllib import parse
@@ -15,9 +16,21 @@ class Worker(object):
         self.bucket = kwargs.get('bucket', 'main')
         self.bot = kwargs.get('bot')
 
-        self.worker_id = 'Worker-{0}'.format(uuid.uuid4().hex)
+        self.worker_id = 'worker-{0}'.format(uuid.uuid4().hex)
         self.logger = get_logger('worker')
         self.client = AsyncHTTPClient()
+
+        store = dict()
+        for name, params in kwargs.get('stores', {}).items():
+            try:
+                module_name, class_name = params['class'].rsplit('.', 1)
+                module_instance = __import__(module_name, fromlist=[class_name])
+                store[name] = getattr(module_instance, class_name)(**params)
+            except Exception as e:
+                pass
+                # self.logger.exception(e)
+
+        self.store = StoreSet(store)
 
     def start(self, loop=None):
         loop = loop or IOLoop.instance()
@@ -45,7 +58,15 @@ class Worker(object):
         success = False
 
         self.logger.info('Start task id={0}'.format(msg.id))
-        yield self.bot(msg).hook()
+        try:
+            bot = self.bot(msg, store=self.store)
+            try:
+                yield bot.run()
+            except Exception as e:
+                self.logger.exception(e)
+                yield bot.send('Произошла ошибка')
+        except:
+            pass
         self.logger.info('Finish task id={0}'.format(msg.id))
 
         request = HTTPRequest(

@@ -79,6 +79,7 @@ def stats():
                 locks=', '.join(list(map(str, list(queue.locks)))),
                 key=key
             ))
+            print(queue.worker_locks)
 
 
 if __name__ == '__main__':

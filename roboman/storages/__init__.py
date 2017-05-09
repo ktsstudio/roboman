@@ -11,4 +11,3 @@ class StoreSet(object):
         if store is not None:
             return store
         return super().__getattribute__(*args, **kwargs)
-

@@ -75,4 +75,5 @@ class HookHandler(BucketHandler):
             self.bucket.add(msg)
             self.send_success_response({'status': 'ok'})
         except KeyError:
-            self.send_error(ServerError.BAD_REQUEST)
+            # skip unsupported message
+            self.send_success_response({'status': 'ok'})

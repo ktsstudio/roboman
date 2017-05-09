@@ -6,7 +6,7 @@ class WorkerHandler(BucketHandler):
     def __init__(self, application, request, **kwargs):
         super().__init__(application, request, **kwargs)
         self.client_disconnected = False
-        self.worker_id = None
+        self.worker = None
 
     @property
     def get_methods(self):
@@ -23,27 +23,27 @@ class WorkerHandler(BucketHandler):
 
     def done_message(self):
         task_id = self.get_str_argument('id')
-        self.worker_id = self.get_str_argument('worker')
+        self.worker = self.get_str_argument('worker')
 
-        self.bucket.remove(task_id, self.worker_id)
+        self.bucket.remove(task_id, self.worker)
         self.send_success_response({'status': 'ok'})
 
     @gen.coroutine
     def get_message(self):
-        self.worker_id = self.get_str_argument('worker')
+        self.worker = self.get_str_argument('worker')
 
-        task = yield self.bucket.next(self.worker_id)
+        task = yield self.bucket.next(self.worker)
 
         if not self.client_disconnected:
             self.send_success_response(data=task.to_dict())
             self.flush()
         else:
-            self.bucket.make_new(task.id, self.worker_id)
+            self.bucket.make_new(task.id)
 
     def on_connection_close(self):
         super().on_connection_close()
         self.client_disconnected = True
 
     def heartbeat(self):
-        worker_id = self.get_str_argument('worker')
-        # print(worker_id)
+        self.worker = self.get_str_argument('worker')
+        self.bucket.worker_locks_heartbeat(self.worker)
