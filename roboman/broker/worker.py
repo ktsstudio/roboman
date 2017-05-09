@@ -1,7 +1,10 @@
+import weakref
+
 from roboman.bot.bot import BaseBot
 from roboman.bot.message import Message
+from roboman.exceptions import BotException
 from roboman.log import get_logger
-from roboman.storages import StoreSet
+from roboman.stores import StoreSet
 from tornkts import utils
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError
 from urllib import parse
@@ -20,17 +23,16 @@ class Worker(object):
         self.logger = get_logger('worker')
         self.client = AsyncHTTPClient()
 
-        store = dict()
+        self.store = StoreSet()
+
         for name, params in kwargs.get('stores', {}).items():
             try:
                 module_name, class_name = params['class'].rsplit('.', 1)
                 module_instance = __import__(module_name, fromlist=[class_name])
-                store[name] = getattr(module_instance, class_name)(**params)
+                params['stores'] = weakref.ref(self.store)
+                self.store[name] = getattr(module_instance, class_name)(**params)
             except Exception as e:
-                pass
-                # self.logger.exception(e)
-
-        self.store = StoreSet(store)
+                self.logger.exception(e)
 
     def start(self, loop=None):
         loop = loop or IOLoop.instance()
@@ -62,6 +64,9 @@ class Worker(object):
             bot = self.bot(msg, store=self.store)
             try:
                 yield bot.run()
+            except BotException as e:
+                self.logger.exception(e)
+                yield bot.send(str(e))
             except Exception as e:
                 self.logger.exception(e)
                 yield bot.send('Произошла ошибка')
@@ -88,7 +93,10 @@ class Worker(object):
     @gen.coroutine
     def receiver(self):
         while True:
-            request = HTTPRequest(self.method('get', {'worker': self.worker_id}), request_timeout=60)
+            request = HTTPRequest(
+                self.method('get', {'worker': self.worker_id}),
+                request_timeout=5
+            )
 
             try:
                 self.logger.info('Fetch task from broker')

@@ -77,6 +77,8 @@ class MsgQueue(object):
 
             if worker in self.worker_locks and key in self.worker_locks[worker]:
                 del self.worker_locks[worker][key]
+                if len(self.worker_locks[worker]) == 0:
+                    del self.worker_locks[worker]
 
             if self.queue[key].unique_key in self.locks:
                 self.locks.remove(self.queue[key].unique_key)

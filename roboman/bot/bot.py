@@ -2,11 +2,11 @@ from asyncio import iscoroutinefunction
 from urllib.parse import urlencode
 
 from roboman.bot import request
+from roboman.bot.message import Message
 from tornado import gen
 from tornado.httpclient import HTTPRequest, HTTPError, AsyncHTTPClient
 from tornado.httputil import url_concat
 from roboman.telegram.inline.result import InlineQueryResult
-from roboman.storages import StoreSet
 from roboman.telegram.keyboard import Keyboard
 from tornkts import utils
 from tornkts.utils import json_loads
@@ -26,6 +26,14 @@ class BaseBot(object):
     @property
     def text(self):
         return self.msg.text
+
+    @property
+    def is_telegram(self):
+        return self.msg.source == Message.SOURCE_TELEGRAM
+
+    @property
+    def is_vk(self):
+        return self.msg.source == Message.SOURCE_VK
 
     async def before_hook(self):
         pass

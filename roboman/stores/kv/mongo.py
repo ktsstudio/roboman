@@ -1,14 +1,11 @@
 from datetime import datetime
-
-from motor import MotorCollection
-from roboman.storages import BaseStorage
 import motor
-from tornado import gen
+from roboman.stores import BaseStore
 
 
-class Store(BaseStorage):
+class Store(BaseStore):
     def __init__(self, **kwargs):
-        super().__init__()
+        super().__init__(**kwargs)
         self._cache = {}
 
         self.client = motor.motor_tornado.MotorClient(kwargs['uri'])
