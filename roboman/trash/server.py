@@ -1,5 +1,3 @@
-import requests
-from roboman.bot import BaseBot
 from roboman.update.get_updates import get_updates
 from roboman.update.webhook import WebHookHandler
 from tornkts.base.server_response import ServerError

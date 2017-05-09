@@ -46,8 +46,13 @@ class BaseBot(object):
 
     async def run(self):
         await self.before_hook()
-        await self.hook()
-        await self.after_hook()
+
+        try:
+            await self.hook()
+        except Exception as e:
+            raise e
+        finally:
+            await self.after_hook()
 
     async def send(self, text):
         req = request.send(self.msg, text)

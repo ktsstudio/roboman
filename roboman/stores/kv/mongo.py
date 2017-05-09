@@ -1,12 +1,13 @@
 from datetime import datetime
-import motor
 from roboman.stores import BaseStore
+import motor
+import pylru
 
 
 class Store(BaseStore):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._cache = {}
+        self.cache = pylru.lrucache(1024)
 
         self.client = motor.motor_tornado.MotorClient(kwargs['uri'])
         self.db = self.client[kwargs['db']]
@@ -29,8 +30,8 @@ class Store(BaseStore):
         return self.db[self.collection_name]
 
     async def get(self, key, default=None):
-        if key in self._cache:
-            return self._cache[key]
+        if key in self.cache:
+            return self.cache[key]
 
         result = default
 
@@ -38,7 +39,7 @@ class Store(BaseStore):
         if record:
             result = record.get('value', default)
 
-        self._cache[key] = result
+        self.cache[key] = result
         return result
 
     async def set(self, key, value, ttl=-1):
@@ -50,9 +51,9 @@ class Store(BaseStore):
         }
 
         await self.collection.update_one({'key': key}, {'$set': data}, upsert=True)
-        self._cache[key] = value
+        self.cache[key] = value
 
     async def delete(self, key):
         await self.collection.delete_many(dict(key=key))
-        if key in self._cache:
-            del self._cache[key]
+        if key in self.cache:
+            del self.cache[key]

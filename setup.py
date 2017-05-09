@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 here = path.abspath(path.dirname(__file__))
 version = '1.0.0'
-modules = ['tornado>=4.0.0', 'tornkts>=0.9.3', 'ujson']
+modules = ['tornado>=4.0.0', 'tornkts>=0.9.3', 'ujson', 'pylru>=1.0.9']
 setup(
     name='roboman',
     version=version,
