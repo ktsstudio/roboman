@@ -1,3 +1,4 @@
+import weakref
 from asyncio import iscoroutinefunction
 from urllib.parse import urlencode
 
@@ -22,6 +23,15 @@ class BaseBot(object):
     def __init__(self, msg, **kwargs):
         self.msg = msg
         self.store = kwargs.get('store')
+        self.extra = kwargs.get('extra')
+        self._parent = kwargs.get('parent')
+
+    @property
+    def parent(self):
+        if isinstance(self._parent, weakref.ref):
+            return self._parent()
+        else:
+            return self._parent
 
     @property
     def text(self):
@@ -44,15 +54,24 @@ class BaseBot(object):
     async def after_hook(self):
         pass
 
-    async def run(self):
-        await self.before_hook()
+    async def run(self, cls=None, extra=None):
+        if cls is None:
+            instance = self
+        else:
+            instance = cls(
+                self.msg,
+                store=self.store,
+                extra=extra,
+                parent=weakref.ref(self)
+            )
 
+        await instance.before_hook()
         try:
-            await self.hook()
+            await instance.hook()
         except Exception as e:
             raise e
         finally:
-            await self.after_hook()
+            await instance.after_hook()
 
     async def send(self, text):
         req = request.send(self.msg, text)

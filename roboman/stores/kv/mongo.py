@@ -29,7 +29,10 @@ class Store(BaseStore):
     def collection(self):
         return self.db[self.collection_name]
 
-    async def get(self, key, default=None):
+    async def get(self, key, default=None, prefix=None):
+        if prefix is not None:
+            key = prefix + key
+
         if key in self.cache:
             return self.cache[key]
 
@@ -42,7 +45,10 @@ class Store(BaseStore):
         self.cache[key] = result
         return result
 
-    async def set(self, key, value, ttl=-1):
+    async def set(self, key, value, ttl=-1, prefix=None):
+        if prefix is not None:
+            key = prefix + key
+
         data = {
             'key': key,
             'value': value,
@@ -53,7 +59,11 @@ class Store(BaseStore):
         await self.collection.update_one({'key': key}, {'$set': data}, upsert=True)
         self.cache[key] = value
 
-    async def delete(self, key):
+    async def delete(self, key, prefix=None):
+        if prefix is not None:
+            key = prefix + key
+
         await self.collection.delete_many(dict(key=key))
+
         if key in self.cache:
             del self.cache[key]

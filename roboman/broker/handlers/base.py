@@ -4,7 +4,7 @@ from tornkts.base.server_response import ServerError
 from tornkts.handlers import BaseHandler
 
 
-class BucketHandler(BaseHandler):
+class BrokerHandler(BaseHandler):
     def __init__(self, application, request, **kwargs):
         super().__init__(application, request, **kwargs)
         self._payload = None
@@ -20,6 +20,12 @@ class BucketHandler(BaseHandler):
 
     def set_bucket(self, bucket):
         self._bucket = bucket
+
+    def check_access_token(self):
+        access_token = self.settings.get('access_token')
+        if access_token:
+            if access_token != self.get_argument('access_token'):
+                raise ServerError(ServerError.ACCESS_DENIED)
 
     def get(self, *args, **kwargs):
         if len(args) > 0:

@@ -1,5 +1,7 @@
 import weakref
 
+from tornado.httputil import url_concat
+
 from roboman.bot.bot import BaseBot
 from roboman.bot.message import Message
 from roboman.exceptions import BotException
@@ -20,6 +22,7 @@ class Worker(object):
         self.bot = kwargs.get('bot')
 
         self.worker_id = 'worker-{0}'.format(uuid.uuid4().hex)
+        self.access_token = kwargs.get('access_token')
         self.logger = get_logger('worker')
         self.client = AsyncHTTPClient()
 
@@ -42,17 +45,22 @@ class Worker(object):
         loop.add_callback(self.receiver)
         loop.add_callback(self.heartbeat)
 
-    def method(self, method, params=None):
-        result = '{url}/{bucket}/worker.{method}'.format(
+    def method(self, method, extra=None):
+        url = '{url}/{bucket}/worker.{method}'.format(
             url=self.broker_url,
             bucket=self.bucket,
             method=method
         )
 
-        if params:
-            result = '{0}?{1}'.format(result, parse.urlencode(params))
+        params = dict()
 
-        return result
+        if self.access_token:
+            params['access_token'] = self.access_token
+
+        if extra:
+            params.update(extra)
+
+        return url_concat(url, params)
 
     @gen.coroutine
     def process_message(self, **kwargs):
@@ -92,6 +100,8 @@ class Worker(object):
 
     @gen.coroutine
     def receiver(self):
+        http_fails = 0
+
         while True:
             request = HTTPRequest(
                 self.method('get', {'worker': self.worker_id}),
@@ -107,15 +117,22 @@ class Worker(object):
                     msg = Message(**data.get('data'))
                     self.logger.info('Fetched task id={0}'.format(msg.id))
                     IOLoop.instance().add_callback(self.process_message, msg=msg)
+
+                http_fails = 0
             except ConnectionRefusedError:
                 self.logger.warning('Broker refuse connection, retry in 1 second...')
                 yield gen.sleep(1)
             except HTTPError as e:
+                http_fails += 1
                 if e.code == 599:
                     self.logger.warning('Long-poll fetch timeout')
                 else:
-                    self.logger.error(e.message)
-                    yield gen.sleep(0.5)
+                    timeout = 0.5 * http_fails / 2
+                    if timeout > 4:
+                        timeout = 4
+
+                    self.logger.error('{0}, wait {1} secs'.format(e.message, timeout))
+                    yield gen.sleep(timeout)
             except Exception as e:
                 self.logger.error(str(e))
 

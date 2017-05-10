@@ -1,10 +1,10 @@
 import sys
-from roboman.broker.handlers.base import BucketHandler
+from roboman.broker.handlers.base import BrokerHandler
 from roboman.bot.message import Message
 from tornkts.base.server_response import ServerError
 
 
-class HookHandler(BucketHandler):
+class HookHandler(BrokerHandler):
     def __init__(self, application, request, **kwargs):
         super().__init__(application, request, **kwargs)
 

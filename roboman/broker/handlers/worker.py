@@ -1,8 +1,8 @@
-from roboman.broker.handlers.base import BucketHandler
+from roboman.broker.handlers.base import BrokerHandler
 from tornado import gen
 
 
-class WorkerHandler(BucketHandler):
+class WorkerHandler(BrokerHandler):
     def __init__(self, application, request, **kwargs):
         super().__init__(application, request, **kwargs)
         self.client_disconnected = False
@@ -10,12 +10,16 @@ class WorkerHandler(BucketHandler):
 
     @property
     def get_methods(self):
+        self.check_access_token()
+
         return {
             'get': self.get_message
         }
 
     @property
     def post_methods(self):
+        self.check_access_token()
+
         return {
             'done': self.done_message,
             'heartbeat': self.heartbeat,
