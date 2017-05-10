@@ -55,6 +55,8 @@ class BaseBot(object):
         pass
 
     async def run(self, cls=None, extra=None):
+        success = False
+
         if cls is None:
             instance = self
         else:
@@ -66,11 +68,14 @@ class BaseBot(object):
             )
 
         await instance.before_hook()
+
         try:
             await instance.hook()
+            success = True
         except Exception as e:
+            await instance.after_hook()
             raise e
-        finally:
+        if success:
             await instance.after_hook()
 
     async def send(self, text):
