@@ -86,3 +86,29 @@ class BaseBot(object):
             return json_loads(res.body)
         except HTTPError as e:
             logger.exception(e)
+
+    def match_command(self, commands=None, text=None):
+        if commands is None:
+            return False
+
+        if text is None:
+            text = self.msg.text
+
+        if not isinstance(commands, list):
+            commands = [commands]
+
+        for command in commands:
+            text = text.strip()
+
+            if not command:
+                continue
+
+            if text.startswith(command) or text.startswith('/' + command):
+                text = text[len(command):].strip()
+                return {
+                    'command': command,
+                    'result': True,
+                    'args': [i for i in text.split(' ')]
+                }
+
+        return False
