@@ -3,8 +3,18 @@ import roboman.bot.request.vk
 import roboman.bot.request.telegram
 
 
-def send(msg, text):
-    if msg.source == Message.SOURCE_VK:
-        return vk.send(msg, text)
-    elif msg.source == Message.SOURCE_TELEGRAM:
-        return telegram.send(msg, text)
+def send(bot, text):
+    if bot.msg.source == Message.SOURCE_VK:
+        try:
+            url = bot.settings['api']['vk']
+        except:
+            url = None
+
+        return vk.send(bot.msg, text, url=url)
+    elif bot.msg.source == Message.SOURCE_TELEGRAM:
+        try:
+            url = bot.settings['api']['tg']
+        except:
+            url = None
+
+        return telegram.send(bot.msg, text, url=url)

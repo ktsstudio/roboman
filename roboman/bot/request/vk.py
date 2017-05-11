@@ -1,12 +1,12 @@
 from urllib.parse import urlencode
-
 from tornado.httpclient import HTTPRequest
 from tornado.httputil import url_concat
-from tornkts.utils import json_dumps
 
 
-def get_method_url(method, token, params=None):
-    url = 'https://api.vk.com/method/{method}?access_token={token}'.format(
+def get_method_url(method, token, url=None, params=None):
+    url = url or 'https://api.vk.com'
+    url = '{url}/method/{method}?access_token={token}'.format(
+        url=url,
         method=method,
         token=token
     )
@@ -16,14 +16,14 @@ def get_method_url(method, token, params=None):
     return url
 
 
-def send(msg, text):
+def send(msg, text, url=None):
     params = {
         'message': text,
         'user_id': msg.from_id,
     }
 
     return HTTPRequest(
-        get_method_url('messages.send', msg.credentials.get('access_token')),
+        get_method_url('messages.send', msg.credentials.get('access_token'), url=url),
         method="POST",
         body=urlencode(params)
     )

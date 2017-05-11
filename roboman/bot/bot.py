@@ -1,18 +1,8 @@
 import weakref
-from asyncio import iscoroutinefunction
-from urllib.parse import urlencode
-
 from roboman.bot import request
 from roboman.bot.message import Message
-from tornado import gen
-from tornado.httpclient import HTTPRequest, HTTPError, AsyncHTTPClient
-from tornado.httputil import url_concat
-from roboman.telegram.inline.result import InlineQueryResult
-from roboman.telegram.keyboard import Keyboard
-from tornkts import utils
+from tornado.httpclient import HTTPError, AsyncHTTPClient
 from tornkts.utils import json_loads
-import random
-import string
 import logging
 
 client = AsyncHTTPClient()
@@ -24,6 +14,7 @@ class BaseBot(object):
         self.msg = msg
         self.store = kwargs.get('store')
         self.extra = kwargs.get('extra')
+        self.settings = kwargs.get('settings', {})
         self._parent = kwargs.get('parent')
 
     @property
@@ -79,7 +70,7 @@ class BaseBot(object):
             await instance.after_hook()
 
     async def send(self, text):
-        req = request.send(self.msg, text)
+        req = request.send(self, text)
 
         try:
             res = await client.fetch(req)

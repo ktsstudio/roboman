@@ -19,7 +19,8 @@ class Worker(object):
     def __init__(self, **kwargs):
         self.broker_url = kwargs.get('broker_url', 'http://127.0.0.1:5555')
         self.bucket = kwargs.get('bucket', 'main')
-        self.bot = kwargs.get('bot')
+        self.bot = kwargs.get('bot_cls')
+        self.bot_settings = kwargs.get('bot', {})
 
         self.worker_id = 'worker-{0}'.format(uuid.uuid4().hex)
         self.access_token = kwargs.get('access_token')
@@ -69,7 +70,7 @@ class Worker(object):
 
         self.logger.info('Start task id={0}'.format(msg.id))
         try:
-            bot = self.bot(msg, store=self.store)
+            bot = self.bot(msg, store=self.store, settings=self.bot_settings)
             try:
                 yield bot.run()
             except BotException as e:

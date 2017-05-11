@@ -4,21 +4,22 @@ from tornado.httpclient import HTTPRequest
 from tornado.httputil import url_concat
 
 
-def get_method_url(method, token, params=None):
-    url = 'https://api.telegram.org/bot' + token + '/' + method
+def get_method_url(method, token, url=None, params=None):
+    url = url or 'https://api.telegram.org'
+    url = url + '/bot' + token + '/' + method
     if params is not None:
         url = url_concat(url, params)
     return url
 
 
-def send(msg, text):
+def send(msg, text, url=None):
     params = {
         'text': text,
         'chat_id': msg.from_id,
     }
 
     return HTTPRequest(
-        get_method_url('sendMessage', msg.credentials.get('access_token')),
+        get_method_url('sendMessage', msg.credentials.get('access_token'), url=url),
         method="POST",
         body=urlencode(params)
     )
