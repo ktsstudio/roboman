@@ -22,6 +22,12 @@ class Worker(object):
         self.bot = kwargs.get('bot_cls')
         self.bot_settings = kwargs.get('bot', {})
 
+        self.credentials = dict()
+        for messenger, data in kwargs.get('messengers', {}).items():
+            if 'bots' not in data or self.bucket not in data['bots']:
+                continue
+            self.credentials[messenger] = data['bots'][self.bucket]
+
         self.worker_id = 'worker-{0}'.format(uuid.uuid4().hex)
         self.access_token = kwargs.get('access_token')
         self.logger = get_logger('worker')
@@ -63,6 +69,14 @@ class Worker(object):
 
         return url_concat(url, params)
 
+    def bot_instance(self, msg):
+        return self.bot(
+            msg,
+            store=self.store,
+            settings=self.bot_settings,
+            credentials=self.credentials,
+        )
+
     @gen.coroutine
     def process_message(self, **kwargs):
         msg = kwargs['msg']
@@ -70,7 +84,7 @@ class Worker(object):
 
         self.logger.info('Start task id={0}'.format(msg.id))
         try:
-            bot = self.bot(msg, store=self.store, settings=self.bot_settings)
+            bot = self.bot_instance(msg)
             try:
                 yield bot.run()
             except BotException as e:
@@ -79,8 +93,8 @@ class Worker(object):
             except Exception as e:
                 self.logger.exception(e)
                 yield bot.send('Произошла ошибка')
-        except:
-            pass
+        except Exception as e:
+            self.logger.exception(e)
         self.logger.info('Finish task id={0}'.format(msg.id))
 
         request = HTTPRequest(

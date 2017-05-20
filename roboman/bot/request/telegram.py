@@ -12,14 +12,14 @@ def get_method_url(method, token, url=None, params=None):
     return url
 
 
-def send(msg, text, url=None):
+def send(msg, text, credentials, url=None):
     params = {
         'text': text,
         'chat_id': msg.from_id,
     }
 
     return HTTPRequest(
-        get_method_url('sendMessage', msg.credentials.get('access_token'), url=url),
+        get_method_url('sendMessage', credentials.get('access_token'), url=url),
         method="POST",
         body=urlencode(params)
     )

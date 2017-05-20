@@ -46,7 +46,7 @@ class MsgQueue(object):
                         flag = False
 
                     if not flag:
-                        self.make_new(key)
+                        task = self.make_new(key)
 
                 if task and task.status == Message.STATUS_NEW and task.unique_key not in self.locks:
                     self.make_work(task.id, worker_id)
@@ -87,6 +87,8 @@ class MsgQueue(object):
             self.queue[key].worker = None
 
             self.notify()
+
+            return self.queue[key]
 
     def add(self, message):
         self.queue[message.id] = message

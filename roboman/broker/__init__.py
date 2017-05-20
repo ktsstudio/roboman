@@ -1,3 +1,4 @@
+import hashlib
 from urllib.parse import urlencode
 from roboman.broker.handlers import WorkerHandler, HookHandler
 from roboman.broker.msg_queue import buckets
@@ -7,6 +8,8 @@ from tornado.httpclient import HTTPClient, HTTPRequest
 from tornado.ioloop import IOLoop
 from tornado.web import Application
 from tornkts.base.server_response import ServerError
+
+from roboman.utils import now_ts
 
 logger = get_logger('broker')
 
@@ -66,20 +69,26 @@ class Broker(Application):
 
 @gen.coroutine
 def stats():
-    while True:
-        yield gen.sleep(3)
+    hash = hashlib.md5(str(now_ts()).encode('utf-8')).hexdigest()
+    hash = hash[0:5]
 
-        for key, queue in buckets.items():
-            queue_stats = queue.stats()
-
-            print('Stats {key}: new: {new}, work: {work}, total:{total}\nLocks: {locks}'.format(
-                new=queue_stats.get('new'),
-                work=queue_stats.get('work'),
-                total=queue_stats.get('total'),
-                locks=', '.join(list(map(str, list(queue.locks)))),
-                key=key
-            ))
-            print(queue.worker_locks)
+    try:
+        filename = '/tmp/s7-broker-{0}.stat'.format(hash)
+        with open(filename, 'w') as f:
+            while True:
+                yield gen.sleep(1)
+                for key, queue in buckets.items():
+                    queue_stats = queue.stats()
+                    print('Stats {key}: new: {new}, work: {work}, total:{total}\nLocks: {locks}'.format(
+                        new=queue_stats.get('new'),
+                        work=queue_stats.get('work'),
+                        total=queue_stats.get('total'),
+                        locks=', '.join(list(map(str, list(queue.locks)))),
+                        key=key
+                    ), file=f)
+                    print(queue.worker_locks, file=f)
+    except:
+        pass
 
 
 if __name__ == '__main__':

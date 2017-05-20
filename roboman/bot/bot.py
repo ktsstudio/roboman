@@ -12,10 +12,12 @@ logger = logging.getLogger('bot')
 class BaseBot(object):
     def __init__(self, msg, **kwargs):
         self.msg = msg
+
+        self._parent = kwargs.get('parent')
         self.store = kwargs.get('store')
         self.extra = kwargs.get('extra')
         self.settings = kwargs.get('settings', {})
-        self._parent = kwargs.get('parent')
+        self.credentials = kwargs.get('credentials', {})
 
     @property
     def parent(self):
@@ -55,6 +57,7 @@ class BaseBot(object):
                 self.msg,
                 store=self.store,
                 extra=extra,
+                credentials=self.credentials,
                 parent=weakref.ref(self)
             )
 

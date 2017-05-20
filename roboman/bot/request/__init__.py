@@ -10,11 +10,11 @@ def send(bot, text):
         except:
             url = None
 
-        return vk.send(bot.msg, text, url=url)
+        return vk.send(bot.msg, text, url=url, credentials=bot.credentials['vk'])
     elif bot.msg.source == Message.SOURCE_TELEGRAM:
         try:
             url = bot.settings['api']['tg']
         except:
             url = None
 
-        return telegram.send(bot.msg, text, url=url)
+        return telegram.send(bot.msg, text, url=url, credentials=bot.credentials['telegram'])
