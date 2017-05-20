@@ -73,11 +73,14 @@ class BaseBot(object):
             await instance.after_hook()
 
     async def send(self, text):
-        req = request.send(self, text)
-
         try:
-            res = await client.fetch(req)
-            return json_loads(res.body)
+            return await request.send(self, text)
+        except HTTPError as e:
+            logger.exception(e)
+
+    async def send_image(self, path):
+        try:
+            return await request.send_image(self, path)
         except HTTPError as e:
             logger.exception(e)
 

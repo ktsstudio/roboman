@@ -3,18 +3,30 @@ import roboman.bot.request.vk
 import roboman.bot.request.telegram
 
 
-def send(bot, text):
+def get_url(bot):
     if bot.msg.source == Message.SOURCE_VK:
         try:
-            url = bot.settings['api']['vk']
+            return bot.settings['api']['vk']
         except:
-            url = None
-
-        return vk.send(bot.msg, text, url=url, credentials=bot.credentials['vk'])
+            return None
     elif bot.msg.source == Message.SOURCE_TELEGRAM:
         try:
-            url = bot.settings['api']['tg']
+            return bot.settings['api']['tg']
         except:
-            url = None
+            return None
 
-        return telegram.send(bot.msg, text, url=url, credentials=bot.credentials['telegram'])
+    return None
+
+
+async def send(bot, text):
+    if bot.msg.source == Message.SOURCE_VK:
+        return await vk.send(bot.msg, text, url=get_url(bot), credentials=bot.credentials['vk'])
+    elif bot.msg.source == Message.SOURCE_TELEGRAM:
+        return await telegram.send(bot.msg, text, url=get_url(bot), credentials=bot.credentials['telegram'])
+
+
+def send_image(bot, path):
+    if bot.msg.source == Message.SOURCE_VK:
+        return vk.send_image(bot.msg, path, url=get_url(bot), credentials=bot.credentials['vk'])
+    elif bot.msg.source == Message.SOURCE_TELEGRAM:
+        return telegram.send_image(bot.msg, path, url=get_url(bot), credentials=bot.credentials['telegram'])
