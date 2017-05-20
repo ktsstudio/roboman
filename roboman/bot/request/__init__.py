@@ -20,9 +20,9 @@ def get_url(bot):
 
 async def send(bot, text):
     if bot.msg.source == Message.SOURCE_VK:
-        return await vk.send(bot.msg, text, url=get_url(bot), credentials=bot.credentials['vk'])
+        return await vk.send(bot.msg, text=text, url=get_url(bot), credentials=bot.credentials['vk'])
     elif bot.msg.source == Message.SOURCE_TELEGRAM:
-        return await telegram.send(bot.msg, text, url=get_url(bot), credentials=bot.credentials['telegram'])
+        return await telegram.send(bot.msg, text=text, url=get_url(bot), credentials=bot.credentials['telegram'])
 
 
 def send_image(bot, path):
