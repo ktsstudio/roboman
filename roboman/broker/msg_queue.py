@@ -52,7 +52,7 @@ class MsgQueue(object):
                     self.make_work(task.id, worker_id)
                     raise gen.Return(task)
             except StopIteration:
-                if self.last_queue_change <= begin_time:
+                if self.last_queue_change < begin_time:
                     yield self.condition.wait()
 
                 begin_time = now_ts()
