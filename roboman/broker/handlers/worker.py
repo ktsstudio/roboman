@@ -41,7 +41,7 @@ class WorkerHandler(BrokerHandler):
 
         task = yield self.bucket.next(self.worker, is_connected)
 
-        if is_connected():
+        if task and is_connected():
             self.send_success_response(data=task.to_dict())
             self.flush()
 

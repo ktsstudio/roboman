@@ -50,15 +50,25 @@ class MsgQueue(object):
 
                 if task and task.status == Message.STATUS_NEW and task.unique_key not in self.locks:
                     if callable(make_work):
-                        make_work = make_work()
+                        make_work_value = make_work()
+                    else:
+                        make_work_value = make_work
 
-                    if make_work:
+                    if make_work_value:
                         self.make_work(task.id, worker_id)
 
                     raise gen.Return(task)
             except StopIteration:
                 if self.last_queue_change < begin_time:
                     yield self.condition.wait()
+
+                if callable(make_work):
+                    make_work_value = make_work()
+                else:
+                    make_work_value = make_work
+
+                if not make_work_value:
+                    return False
 
                 begin_time = now_ts()
                 queue_keys, queue_keys_iter = self.queue_iteration()
