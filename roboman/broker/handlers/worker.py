@@ -34,15 +34,18 @@ class WorkerHandler(BrokerHandler):
 
     @gen.coroutine
     def get_message(self):
+        def is_connected():
+            return not self.client_disconnected
+
         self.worker = self.get_str_argument('worker')
 
-        task = yield self.bucket.next(self.worker)
+        task = yield self.bucket.next(self.worker, is_connected)
 
-        if not self.client_disconnected:
+        if is_connected():
             self.send_success_response(data=task.to_dict())
             self.flush()
-        else:
-            self.bucket.make_new(task.id)
+
+        self.finish()
 
     def on_connection_close(self):
         super().on_connection_close()

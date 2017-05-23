@@ -26,7 +26,7 @@ class MsgQueue(object):
         return queue_keys, queue_keys_iter
 
     @gen.coroutine
-    def next(self, worker_id):
+    def next(self, worker_id, make_work=False):
         begin_time = now_ts()
         queue_keys, queue_keys_iter = self.queue_iteration()
 
@@ -49,7 +49,12 @@ class MsgQueue(object):
                         task = self.make_new(key)
 
                 if task and task.status == Message.STATUS_NEW and task.unique_key not in self.locks:
-                    self.make_work(task.id, worker_id)
+                    if callable(make_work):
+                        make_work = make_work()
+
+                    if make_work:
+                        self.make_work(task.id, worker_id)
+
                     raise gen.Return(task)
             except StopIteration:
                 if self.last_queue_change < begin_time:

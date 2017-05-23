@@ -1,7 +1,12 @@
+import logging
+import uuid
+
 from roboman.broker.msg_queue import get_bucket
 from tornkts import utils
 from tornkts.base.server_response import ServerError
 from tornkts.handlers import BaseHandler
+
+logger = logging.getLogger('broker')
 
 
 class BrokerHandler(BaseHandler):
@@ -9,10 +14,14 @@ class BrokerHandler(BaseHandler):
         super().__init__(application, request, **kwargs)
         self._payload = None
         self._bucket = None
+        self.hash = uuid.uuid4().hex[0:5]
 
     @property
     def bucket(self):
         return get_bucket(self._bucket)
+
+    def log(self, text):
+        logger.info(self.hash + ' ' + text)
 
     @property
     def bucket_name(self):
